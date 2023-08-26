@@ -8,12 +8,29 @@ const App = () => {
   const [wallet, setWallet] = useState(initialState);
 
   useEffect(() => {
+    const refreshAccounts = (accounts: any) => {
+      if (accounts.length > 0) {
+        updateWallet(accounts);
+      } else {
+        setWallet(initialState);
+      }
+    };
+
     const getProvider = async () => {
       const provider = await detectEthereumProvider({ silent: true });
-      console.log(provider);
       setHasProvider(Boolean(provider));
+
+      if (provider) {
+        const accounts = await window.ethereum.request({ method: "eth_accounts" });
+        refreshAccounts(accounts);
+        window.ethereum.on("accountsChanged", refreshAccounts);
+      }
     };
+
     getProvider();
+    return () => {
+      window.ethereum?.removeListener("accountsChanged", refreshAccounts);
+    };
   }, []);
 
   const updateWallet = async (accounts: any) => {
@@ -27,12 +44,10 @@ const App = () => {
     updateWallet(accounts);
   };
 
-  console.log(wallet.accounts.length);
-
   return (
     <div className="App">
       <h2>Injected Provider {hasProvider ? "DOES" : "DOES NOT"} Exist</h2>
-      {hasProvider && (
+      {window.ethereum?.isMetaMask && wallet.accounts.length < 1 && (
         <button className="connect-btn" onClick={handleConnect}>
           Connect MetaMask
         </button>
