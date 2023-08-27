@@ -7,9 +7,12 @@ const App = () => {
   const [hasProvider, setHasProvider] = useState<boolean | null>(null);
   const initialState = { accounts: [], balance: "", chainId: "" };
   const [wallet, setWallet] = useState(initialState);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const refreshAccounts = (accounts: any) => {
+    const refreshAccounts = (accounts: []) => {
       if (accounts.length > 0) {
         updateWallet(accounts);
       } else {
@@ -17,7 +20,7 @@ const App = () => {
       }
     };
 
-    const refreshChain = (chainId: any) => {
+    const refreshChain = (chainId: string) => {
       setWallet((wallet) => ({ ...wallet, chainId }));
     };
 
@@ -54,17 +57,29 @@ const App = () => {
   };
 
   const handleConnect = async () => {
-    let accounts = await window.ethereum.request({
-      method: "eth_requestAccounts",
-    });
-    updateWallet(accounts);
+    setIsConnecting(true);
+    await window.ethereum
+      .request({
+        method: "eth_requestAccounts",
+      })
+      .then((accounts: []) => {
+        setError(false);
+        updateWallet(accounts);
+      })
+      .catch((err: any) => {
+        setError(true);
+        setErrorMessage(err.message);
+      });
+    setIsConnecting(false);
   };
+
+  const disableConnect = Boolean(wallet) && isConnecting;
 
   return (
     <div className="App">
       <h2>Injected Provider {hasProvider ? "DOES" : "DOES NOT"} Exist</h2>
       {window.ethereum?.isMetaMask && wallet.accounts.length < 1 && (
-        <button className="connect-btn" onClick={handleConnect}>
+        <button disabled={disableConnect} className="connect-btn" onClick={handleConnect}>
           Connect MetaMask
         </button>
       )}
@@ -75,6 +90,12 @@ const App = () => {
           <div>Hex ChainId: {wallet.chainId}</div>
           <div>Numeric ChainId: {formatChainAsNum(wallet.chainId)}</div>
         </>
+      )}
+      {error && (
+        <div onClick={() => setError(false)}>
+          <strong>Error: </strong>
+          {errorMessage}
+        </div>
       )}
     </div>
   );
